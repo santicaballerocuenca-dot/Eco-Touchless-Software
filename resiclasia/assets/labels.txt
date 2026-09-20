@@ -1,0 +1,7 @@
+Fondo
+Metal
+NoAceptar
+Organico
+Papel_carton
+Plastico
+Vidrio

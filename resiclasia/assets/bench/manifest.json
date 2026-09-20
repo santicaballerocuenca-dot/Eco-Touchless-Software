@@ -1,0 +1,181 @@
+{
+    "version":  1,
+    "selection":  "5 por clase, espaciado determinista por nombre",
+    "samples":  [
+                    {
+                        "asset":  "assets/bench/Fondo_1.jpg",
+                        "label":  "Fondo",
+                        "source":  "20250811192253.jpg.62a8qr6g.ingestion-696d946869-wp7jr.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Fondo_2.jpg",
+                        "label":  "Fondo",
+                        "source":  "20250811192701.jpg.62a8qr6h.ingestion-696d946869-ln9th.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Fondo_3.jpg",
+                        "label":  "Fondo",
+                        "source":  "Fondo.627sn9qn.jpg.627t5iud.ingestion-696d946869-4656j.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Fondo_4.jpg",
+                        "label":  "Fondo",
+                        "source":  "Fondo.62a1ojt4.ingestion-696d946869-wp7jr.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Fondo_5.jpg",
+                        "label":  "Fondo",
+                        "source":  "Fondo.62a1qcth.ingestion-696d946869-4656j.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Metal_1.jpg",
+                        "label":  "Metal",
+                        "source":  "20250811183311.jpg.62a8q1n1.ingestion-696d946869-wp7jr.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Metal_2.jpg",
+                        "label":  "Metal",
+                        "source":  "metal226.jpg.63qladh9.ingestion-79b87bd548-w8clm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Metal_3.jpg",
+                        "label":  "Metal",
+                        "source":  "metal354.jpg.63qlagau.ingestion-79b87bd548-vxptv.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Metal_4.jpg",
+                        "label":  "Metal",
+                        "source":  "metal576.jpg.63qvvqll.ingestion-79b87bd548-w8clm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Metal_5.jpg",
+                        "label":  "Metal",
+                        "source":  "metal98.jpg.61lsq4i6.ingestion-864f766795-r7wvh.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/NoAceptar_1.jpg",
+                        "label":  "NoAceptar",
+                        "source":  "battery10.jpg.63oisq58.ingestion-79b87bd548-w8clm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/NoAceptar_2.jpg",
+                        "label":  "NoAceptar",
+                        "source":  "battery348.jpg.63oisv41.ingestion-79b87bd548-crqnr.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/NoAceptar_3.jpg",
+                        "label":  "NoAceptar",
+                        "source":  "battery593.jpg.63oit600.ingestion-79b87bd548-w8clm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/NoAceptar_4.jpg",
+                        "label":  "NoAceptar",
+                        "source":  "battery837.jpg.63oitkhn.ingestion-79b87bd548-crqnr.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/NoAceptar_5.jpg",
+                        "label":  "NoAceptar",
+                        "source":  "NoAceptar.63qp6ccq.ingestion-79b87bd548-w8clm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Organico_1.jpg",
+                        "label":  "Organico",
+                        "source":  "20250811180025.jpg.62a8785t.ingestion-696d946869-ln9th.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Organico_2.jpg",
+                        "label":  "Organico",
+                        "source":  "biological31.jpg.63qdu7p0.ingestion-79b87bd548-w8clm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Organico_3.jpg",
+                        "label":  "Organico",
+                        "source":  "biological544.jpg.63qdudte.ingestion-79b87bd548-vxptv.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Organico_4.jpg",
+                        "label":  "Organico",
+                        "source":  "biological775.jpg.63qdumor.ingestion-79b87bd548-w8clm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Organico_5.jpg",
+                        "label":  "Organico",
+                        "source":  "IMG_20250803_190025.jpg.61lntprl.ingestion-864f766795-r7wvh.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Papel_carton_1.jpg",
+                        "label":  "Papel_carton",
+                        "source":  "20250811185413.jpg.62a8dbem.ingestion-696d946869-4656j.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Papel_carton_2.jpg",
+                        "label":  "Papel_carton",
+                        "source":  "cardboard322.jpg.61lsu0uu.ingestion-864f766795-r7wvh.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Papel_carton_3.jpg",
+                        "label":  "Papel_carton",
+                        "source":  "paper127.jpg.61lstb0h.ingestion-864f766795-95f5g.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Papel_carton_4.jpg",
+                        "label":  "Papel_carton",
+                        "source":  "paper390.jpg.61lstg1p.ingestion-864f766795-kgdtm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Papel_carton_5.jpg",
+                        "label":  "Papel_carton",
+                        "source":  "paper96.jpg.61lstkfe.ingestion-864f766795-kgdtm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Plastico_1.jpg",
+                        "label":  "Plastico",
+                        "source":  "20250811182009.jpg.62a8q1v2.ingestion-696d946869-wp7jr.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Plastico_2.jpg",
+                        "label":  "Plastico",
+                        "source":  "plastic213.jpg.61lsrf1r.ingestion-864f766795-95f5g.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Plastico_3.jpg",
+                        "label":  "Plastico",
+                        "source":  "plastic375.jpg.61lsri5h.ingestion-864f766795-95f5g.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Plastico_4.jpg",
+                        "label":  "Plastico",
+                        "source":  "plastic555.jpg.63r020uo.ingestion-79b87bd548-vxptv.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Plastico_5.jpg",
+                        "label":  "Plastico",
+                        "source":  "plastic99.jpg.61lsrktp.ingestion-864f766795-95f5g.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Vidrio_1.jpg",
+                        "label":  "Vidrio",
+                        "source":  "glass105.jpg.61lsp9hr.ingestion-864f766795-kgdtm.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Vidrio_2.jpg",
+                        "label":  "Vidrio",
+                        "source":  "glass281.jpg.63qlji9p.ingestion-79b87bd548-vxptv.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Vidrio_3.jpg",
+                        "label":  "Vidrio",
+                        "source":  "glass455.jpg.61lspfjj.ingestion-864f766795-95f5g.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Vidrio_4.jpg",
+                        "label":  "Vidrio",
+                        "source":  "white-glass389.jpg.63r033pn.ingestion-79b87bd548-vxptv.jpg"
+                    },
+                    {
+                        "asset":  "assets/bench/Vidrio_5.jpg",
+                        "label":  "Vidrio",
+                        "source":  "white-glass90.jpg.63r03dne.ingestion-79b87bd548-vxptv.jpg"
+                    }
+                ]
+}

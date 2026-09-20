@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- La ESP32 sirve HTTP dentro de una red privada y su IP es configurable.
+         EspService aplica la restricción a rangos privados antes de crear cada
+         URI, evitando destinos públicos aunque Android permita el transporte. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
