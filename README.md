@@ -58,7 +58,7 @@ La aplicación cuenta con 3 secciones principales y 1 módulo avanzado para desa
 1. Descarga el ultimo archivo `.apk` disponible en la sección de **Releases** de este repositorio.
 2. Instala la APK en tu dispositivo Android.
 3. Otorga los permisos requeridos de **Cámara** y **Almacenamiento**.
-4. *(Opcional)* Carga tu propio modelo `.tflite` desde el codigo fuente para probar tus propias redes neuronales en Assets/Models/ y compararlo con otros modelos(debes tener dart,flutter e android instalado, ademas de compilar la app para este paso).
+4. *(Opcional)* Carga tu propio modelo `.tflite` desde el codigo fuente para probar tus propias redes neuronales en Assets/Models/ y compararlo con otros modelos(debes tener dart, flutter e android instalado, ademas de compilar la app para este paso).
 
 ---
 
