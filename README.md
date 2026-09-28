@@ -1,67 +1,65 @@
-# ♻️ ECO-TOUCHLESS: SOFTWARE (Android App)
+# ♻️ ECO-TOUCHLESS: SOFTWARE
 
-> **Sistema de clasificación de residuos en tiempo real con Inteligencia Artificial On-Device totalmente privado.**
+Aplicación Flutter para clasificar residuos en tiempo real mediante inteligencia artificial ejecutada directamente en el dispositivo, con integración opcional a un clasificador físico basado en ESP32.
 
-Esta aplicación Android (.APK) es la interfaz y el motor de procesamiento inteligente diseñado originalmente para interactuar con un sistema físico de clasificación de residuos. Sin embargo, su arquitectura modular permite utilizarla de forma independiente o integrarla en otros proyectos de robótica, IoT y reciclaje.
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.1.0-21c997)](../../releases/tag/v1.1.0)
+[![Flutter](https://img.shields.io/badge/Flutter-3.35.2-02569B?logo=flutter)](https://flutter.dev/)
 
----
+## Características
 
-## 📸 Demostración Visual / Capturas
+- Clasificación local con modelos TensorFlow Lite, sin enviar imágenes a servidores.
+- Detección de plástico, vidrio, metal, papel/cartón y residuos orgánicos.
+- Filtros para pilas, personas, fondos y objetos no aceptados.
+- Modos de interfaz limpio, fácil, detallado y desarrollador.
+- Historial y estadísticas almacenados localmente con SQLite.
+- Exportación de historial y resultados.
+- Catálogo y benchmarking de modelos `.tflite`.
+- Comunicación Wi-Fi con una ESP32 para controlar el clasificador físico.
 
-| Clasificación en Vivo | Estadísticas | Benchs & ML |
-| :---: | :---: | :---: |
-| ![Clasificación](link-a-tu-imagen-clasificacion.png) | ![Estadísticas](link-a-tu-imagen-estadisticas.png) | ![Benchs](link-a-tu-imagen-benchs.png) |
+## Descarga
 
----
+La versión más reciente está disponible en [GitHub Releases](../../releases/latest).
 
-## ✨ Funcionalidades y Módulos
+> El APK publicado actualmente es una compilación de depuración instalable para pruebas. La distribución de producción requiere configurar una clave privada de firma Android.
 
-La aplicación cuenta con 3 secciones principales y 1 módulo avanzado para desarrolladores:
+## Estructura
 
-### 1. 🔍 Clasificación (Tiempo Real)
-* **Categorías detectadas y aceptadas:**
-  * 🥤 Plásticos
-  * 🍾 Vidrios
-  * 🥫 Metales
-  * 📦 Papeles y Cartones
-  * 🍎 Residuos Orgánicos
-* **Filtros de rechazo (Seguridad):**
-  * 🔋 Pilas
-  * 🖼️ Fondos / Vacíos
-  * 👤 Personas (evita falsos positivos en entornos concurridos)
+```text
+.
+├── eco_touchless/              # Aplicación Flutter
+├── firmware/
+│   └── eco_touchless_esp32/  # Firmware del clasificador
+└── .github/workflows/        # Integración continua
+```
 
-### 2. ⚙️ Ajustes
-* Configuración de parámetros de la cámara.
-* Ajustes de sensibilidad y umbral de confianza para la detección.
-* Configuración de comunicación con la estructura física/hardware.
+El nombre visible del producto es `ECO-TOUCHLESS`, el paquete Dart es `eco_touchless` y el identificador nativo es `com.ecotouchless.app`.
 
-### 3. 📊 Estadísticas
-* Histórico de materiales detectados y procesados.
-* Métricas visuales del rendimiento del sistema guardadas localmente.
+## Desarrollo
 
-### 4. 🧪 Benchs & Modelos Personalizados *(Módulo Avanzado)*
-* **Carga de modelos propios:** Permite importar archivos de modelos personalizados en formato `.tflite`.
-* **Benchmarking:** Mide en tiempo real la velocidad de inferencia (FPS), latencia y precisión de tu modelo dentro de la app.
+Requisitos:
 
----
+- Flutter 3.35.2 o compatible.
+- Dart 3.9 o compatible.
+- Android Studio y Android SDK para compilar el APK.
 
-## 🛠️ Tecnologías Utilizadas
+```bash
+cd eco_touchless
+flutter pub get
+flutter analyze --fatal-infos
+flutter test
+flutter build apk --debug
+```
 
-* **Motor de IA / Inferencia:** [TensorFlow Lite (TFLite)](https://www.tensorflow.org/lite) – Permite ejecutar inferencias de Deep Learning de manera 100% local (*on-device*) sin necesidad de conexión a internet ni servidor.
-* **Base de Datos Local:** [SQLite](https://www.sqlite.org/) – Almacenamiento rápido y eficiente para guardar configuraciones, registros e historial de estadísticas.
-* **Plataforma:** Android (Java / Kotlin)
+## Firmware ESP32
 
----
+El sketch se encuentra en [`firmware/eco_touchless_esp32/eco_touchless_esp32.ino`](firmware/eco_touchless_esp32/eco_touchless_esp32.ino). La red predeterminada del clasificador es `ECO-TOUCHLESS`.
 
-## 📦 Instalación y Uso
+Consulta la [guía de instalación, cableado y calibración](firmware/README.md) antes de conectar los servos.
 
-1. Descarga el ultimo archivo `.apk` disponible en la sección de **Releases** de este repositorio.
-2. Instala la APK en tu dispositivo Android.
-3. Otorga los permisos requeridos de **Cámara** y **Almacenamiento**.
-4. *(Opcional)* Carga tu propio modelo `.tflite` desde el codigo fuente para probar tus propias redes neuronales en Assets/Models/ y compararlo con otros modelos(debes tener dart, flutter e android instalado, ademas de compilar la app para este paso).
+## Privacidad
 
----
+La inferencia, el historial y la configuración se procesan localmente. La aplicación no necesita un servidor remoto para clasificar residuos.
 
-## 📄 Licencia
+## Licencia
 
-Este proyecto está bajo ninguna licencia. Pero yo autorizo su uso libre y mejoras al proyecto original.
+El autor permite el uso y la mejora del proyecto original. Actualmente el repositorio no incluye un archivo de licencia estándar; antes de redistribuirlo conviene agregar uno con las condiciones exactas de uso.
