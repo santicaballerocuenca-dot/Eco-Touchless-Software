@@ -60,6 +60,9 @@ Consulta la [guía de instalación, cableado y calibración](firmware/README.md)
 
 La inferencia, el historial y la configuración se procesan localmente. La aplicación no necesita un servidor remoto para clasificar residuos.
 
-## Licencia
+## 📄 Licencia
 
-El autor permite el uso y la mejora del proyecto original. Actualmente el repositorio no incluye un archivo de licencia estándar; antes de redistribuirlo conviene agregar uno con las condiciones exactas de uso.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Este proyecto está distribuido bajo la licencia MIT. Consulta el archivo [LICENSE](LICENSE) para obtener más información.
+Siéntete libre de usar, modificar y distribuir este proyecto. Se requiere mantener el aviso de derechos de autor y la nota de licencia original.
