@@ -1,0 +1,20 @@
+* text=auto
+
+# Keep scripts executable-friendly on Linux runners.
+*.sh text eol=lf
+gradlew text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Native Windows scripts use CRLF.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets and model files.
+*.apk binary
+*.ico binary
+*.jar binary
+*.jpg binary
+*.png binary
+*.tflite binary
+*.zip binary

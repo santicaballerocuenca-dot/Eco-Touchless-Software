@@ -1,0 +1,6 @@
+# Copiar como android/key.properties y completar con valores reales.
+# key.properties y los archivos *.jks/*.keystore ya están ignorados por Git.
+storePassword=CAMBIAR
+keyPassword=CAMBIAR
+keyAlias=eco_touchless
+storeFile=../signing/eco_touchless-release.jks

@@ -1,6 +1,0 @@
-# Copiar como android/key.properties y completar con valores reales.
-# key.properties y los archivos *.jks/*.keystore ya están ignorados por Git.
-storePassword=CAMBIAR
-keyPassword=CAMBIAR
-keyAlias=resiclasia
-storeFile=../signing/resiclasia-release.jks

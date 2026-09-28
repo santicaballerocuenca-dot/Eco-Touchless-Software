@@ -1,6 +1,6 @@
 # ESP32 AI Thinker · control de tres basureros
 
-Abrí [resiclasia_esp32/resiclasia_esp32.ino](resiclasia_esp32/resiclasia_esp32.ino) en Arduino IDE. El nombre de carpeta y sketch debe coincidir. Este firmware es para **AI Thinker ESP32-CAM con ESP32 clásico**, no ESP32-S3; **no inicializa la cámara ni la microSD**. Las fotos e inferencias siguen haciéndose en la tablet.
+Abrí [eco_touchless_esp32/eco_touchless_esp32.ino](eco_touchless_esp32/eco_touchless_esp32.ino) en Arduino IDE. El nombre de carpeta y sketch debe coincidir. Este firmware es para **AI Thinker ESP32-CAM con ESP32 clásico**, no ESP32-S3; **no inicializa la cámara ni la microSD**. Las fotos e inferencias siguen haciéndose en la tablet.
 
 ## Primero: alimentación y seguridad
 
@@ -20,13 +20,13 @@ Abrí [resiclasia_esp32/resiclasia_esp32.ino](resiclasia_esp32/resiclasia_esp32.
 4. En Gestor de bibliotecas instalar **ESP32Servo 3.2.1** y **ArduinoJson 7.4.3**. WiFi, WebServer y Preferences vienen con el core.
 5. Abrir el `.ino`, revisar las constantes del principio y pulsar **Verificar**.
 6. Cargar manualmente usando el procedimiento de tu adaptador/placa. Un USB–serial debe usar **lógica de 3,3 V**. Si tu placa requiere GPIO0–GND para cargar, quitar ese puente antes de reiniciar para ejecutar. No alimentar motores durante la carga.
-7. Abrir monitor serie a **115200 baudios**. Debe informar `AP: RESICLASIA, ready, IP 192.168.4.1`.
+7. Abrir monitor serie a **115200 baudios**. Debe informar `AP: ECO-TOUCHLESS, ready, IP 192.168.4.1`.
 
 ## 2. Conectar desde la app
 
 1. Instalar el APK actualizado y abrir **Ajustes**.
 2. Activar **Enviar resultado al clasificador físico**.
-3. Conectar la tablet a **RESICLASIA**, contraseña inicial **resiclas2026**. Aceptar permanecer en la red aunque Android indique “sin Internet”.
+3. Conectar la tablet a **ECO-TOUCHLESS**, contraseña inicial **resiclas2026**. Aceptar permanecer en la red aunque Android indique “sin Internet”.
 4. IP **192.168.4.1**, puerto **80**. Ejecutar diagnóstico.
 5. La **Clave de control** inicial es **resiclas2026-control**. Debe coincidir con `API_KEY` del sketch; pulsar **Guardar clave de control** si la cambiás.
 6. El bloque **Servos de la ESP32** lee la configuración automáticamente, también al conectarse manualmente. Si hace falta, pulsar **Leer ajustes de la ESP32**.
@@ -75,7 +75,7 @@ Mapa inicial: **Plastico → GPIO12; Papel_carton → GPIO13; Organico → GPIO1
 Ejemplo de configuración (los identificadores/revisión se obtienen por GET, no copiar literalmente):
 
 ```json
-{"device":"resiclasia-esp32","apiVersion":1,"deviceId":"...","bootId":"...","revision":1,"servos":[
+{"device":"eco_touchless-esp32","apiVersion":1,"deviceId":"...","bootId":"...","revision":1,"servos":[
   {"id":0,"gpio":12,"enabled":true,"label":"Metal","closedAngle":180,"openAngle":90,"holdMs":3000},
   {"id":1,"gpio":13,"enabled":true,"label":"Papel_carton","closedAngle":0,"openAngle":90,"holdMs":4000},
   {"id":2,"gpio":15,"enabled":true,"label":"Organico","closedAngle":0,"openAngle":90,"holdMs":3000}

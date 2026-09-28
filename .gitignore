@@ -1,0 +1,63 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+
+# Dart and Flutter generated files
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/build/
+**/coverage/
+**/doc/api/
+**/.tooling/
+
+# Android generated files and local configuration
+**/android/.gradle/
+**/android/.kotlin/
+**/android/local.properties
+**/android/key.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+*.jks
+*.keystore
+
+# Apple generated files
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/ephemeral/
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/macos/Flutter/ephemeral/
+**/Pods/
+**/.symlinks/
+**/DerivedData/
+
+# Desktop generated files
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# Logs, temporary files, and secrets
+*.log
+*.tmp
+*.temp
+*.class
+*.pyc
+.env
+.env.*
+!.env.example
+
+# Flutter symbol and obfuscation outputs
+app.*.symbols
+app.*.map.json
