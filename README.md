@@ -14,7 +14,12 @@ Aplicación Flutter para clasificar residuos en tiempo real mediante inteligenci
 - Historial y estadísticas almacenados localmente con SQLite.
 - Exportación de historial y resultados.
 - Catálogo y benchmarking de modelos `.tflite`.
-- Comunicación Wi-Fi con una ESP32 para controlar el clasificador físico.
+- Comunicación Wi-Fi con una ESP32 para controlar el clasificador físico. (Parte proyecto)
+## Principales Funciones
+
+- Uso de detección de movimiento para capturar fotos automaticamente sin necesidad de tocar la tablet.
+- Opción para ingresar tu propio modelo en la app desde el codigo fuente.
+- Al usarlo con el ESP32, puedes crear un aparato clasificador de residuos automático para plazas públicas, hospitales, etc.
 
 ## Descarga
 
