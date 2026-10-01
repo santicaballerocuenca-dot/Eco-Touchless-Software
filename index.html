@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ECO-TOUCHLESS - Basurero Inteligente con IA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --accent: #3b82f6;
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    header {
+      padding: 4rem 1.5rem 3rem;
+      text-align: center;
+      background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--primary);
+      padding: 0.4rem 1rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #ffffff 0%, #a5f3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 650px;
+      margin: 0 auto 2rem;
+    }
+
+    .cta-group {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.85rem 1.8rem;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: #000;
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--border);
+      transform: translateY(-2px);
+    }
+
+    container {
+      display: block;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    section {
+      margin-bottom: 4rem;
+    }
+
+    .section-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      color: var(--text-main);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.8rem;
+      transition: transform 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+    }
+
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .steps-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      text-align: center;
+    }
+
+    .step-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .step-number {
+      background: var(--primary);
+      color: #000;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      margin: 0 auto 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    th, td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.95rem;
+    }
+
+    th {
+      background-color: rgba(255, 255, 255, 0.03);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    td {
+      color: var(--text-muted);
+    }
+
+    .download-box {
+      background: linear-gradient(135deg, #1e293b 0%, #064e3b 100%);
+      border: 1px solid var(--primary);
+      border-radius: 20px;
+      padding: 3rem 2rem;
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .instructions {
+      text-align: left;
+      max-width: 500px;
+      margin: 1.5rem auto 0;
+      background: rgba(0,0,0,0.2);
+      padding: 1.2rem 1.8rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .instructions ol {
+      padding-left: 1.2rem;
+    }
+
+    .instructions li {
+      margin-bottom: 0.4rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Encabezado / Hero -->
+  <header>
+    <span class="badge">Colegio San José · Proyecto Muescientec 2026</span>
+    <h1>ECO-TOUCHLESS</h1>
+    <p class="subtitle">
+      Separación inteligente de residuos con IA, cero contacto manual y ultra bajo costo para espacios de alta circulación .
+    </p>
+    <div class="cta-group">
+      <!-- REEMPLAZA "TU_USUARIO" Y "TU_REPOSITORIO" CON TUS DATOS DE GITHUB -->
+      <a href="https://github.com/santicaballerocuenca-dot/Eco-Touchless-Software/releases/download/v1.1.0/Eco-Touchless-Software-v1.1.0-debug.apk" class="btn btn-primary">
+        🤖 Descargar APK (Android)
+      </a>
+      <a href="#como-funciona" class="btn btn-secondary">
+        🔍 Saber Más
+      </a>
+    </div>
+  </header>
+
+  <container>
+
+    <!-- Pilares de Innovación -->
+    <section>
+      <h2 class="section-title">Pilares del Proyecto</h2>
+      <div class="grid-4">
+        <div class="card">
+          <div class="card-icon">♻️</div>
+          <h3>Economía Circular</h3>
+          <p>Estructura fabricada con cartón reutilizado, transformando un residuo en recurso tecnológico .</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">👁️</div>
+          <h3>Visión Artificial</h3>
+          <p>Identificación automatizada de materiales mediante inteligencia artificial en PyTorch y Python .</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🖐️</div>
+          <h3>Cero Contacto</h3>
+          <p>Apertura automatizada mediante servomotores que evita tocar tapas y contaminar manos .</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">💡</div>
+          <h3>Bajo Costo</h3>
+          <p>Desarrollado con componentes accesibles como ESP32 con un costo accesible para escuelas .</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cómo Funciona -->
+    <section id="como-funciona">
+      <h2 class="section-title">¿Cómo Funciona el Sistema?</h2>
+      <div class="steps-container">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3>OBSERVA</h3>
+          <p>La cámara captura la imagen del residuo presentado por el usuario .</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3>ANALIZA</h3>
+          <p>El modelo de Visión Artificial evalúa las características visuales .</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3>CLASIFICA</h3>
+          <p>Determina si es plástico, papel/cartón, metal u orgánico .</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">4</div>
+          <h3>ACTÚA</h3>
+          <p>La ESP32 acciona el servomotor y abre la tapa automáticamente .</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Metas de Investigación / Indicadores -->
+    <section>
+      <h2 class="section-title">Metas e Indicadores de Desempeño</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Indicador Clave</th>
+            <th>Meta del Prototipo</th>
+            <th>Método de Evaluación</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Precisión de Clasificación</strong></td>
+            <td>&ge; 80% de aciertos</td>
+            <td>50 ensayos controlados con residuos limpios[cite: 1]</td>
+          </tr>
+          <tr>
+            <td><strong>Tiempo de Respuesta</strong></td>
+            <td>&le; 5 segundos</td>
+            <td>Medición por cronómetro/software desde la captura[cite: 1]</td>
+          </tr>
+          <tr>
+            <td><strong>Reducción de Contacto</strong></td>
+            <td>&ge; 80% menos toques</td>
+            <td>Comparativa observacional vs. basurero tradicional[cite: 1]</td>
+          </tr>
+          <tr>
+            <td><strong>Eficacia Mecánica</strong></td>
+            <td>&ge; 90% aperturas correctas</td>
+            <td>Registro de respuesta de servomotores MG996R </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Componentes Técnicos -->
+    <section>
+      <h2 class="section-title">Especificaciones Técnicas</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>⚡ Hardware Integrado</h3>
+          <p>• <strong>Microcontrolador:</strong> Placa ESP32 <br>
+          • <strong>Actuadores:</strong> Servomotores MG996R de alto torque <br>
+          • <strong>Chasis:</strong> Cartón reciclado estructural reutilizado </p>
+        </div>
+        <div class="card">
+          <h3>🧠 Software y Visión</h3>
+          <p>• <strong>Lenguaje/Framework:</strong> Python con PyTorch <br>
+          • <strong>Entrenamiento:</strong> Dataset con categorías de residuos <br>
+          • <strong>Lógica:</strong> Control de apertura sin contacto directo </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección de Descarga -->
+    <section id="descargar" class="download-box">
+      <h2>📱 Descarga la App Móvil</h2>
+      <p style="color: var(--text-muted); margin-top: 0.5rem;">Instala la versión ejecutable (.apk) para interactuar o monitorear el prototipo ECO-TOUCHLESS.</p>
+      
+      <br>
+
+      <!-- REEMPLAZA CON TU ENLACE REAL DE RELEASE -->
+      <a href="https://github.com/santicaballerocuenca-dot/Eco-Touchless-Software/releases/download/v1.1.0/Eco-Touchless-Software-v1.1.0-debug.apk" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2.2rem;">
+        ⬇️ Descargar archivo .APK
+      </a>
+
+      <div class="instructions">
+        <strong>📋 Instrucciones de instalación:</strong>
+        <ol>
+          <li>Haz clic en el botón de descarga.</li>
+          <li>Abre el archivo <code>.apk</code> en tu teléfono Android.</li>
+          <li>Si el sistema lo pide, habilita la opción de <em>"Permitir la instalación de fuentes desconocidas"</em>.</li>
+          <li>¡Abre la app y explora la interfaz!</li>
+        </ol>
+      </div>
+    </section>
+
+  </container>
+
+  <footer>
+    <p>ECO-TOUCHLESS · Proyecto de Muescientec 2026 </p>
+    <p>Alojado gratuitamente en <a href="https://pages.github.com/" target="_blank">GitHub Pages</a></p>
+  </footer>
+
+</body>
+</html>
