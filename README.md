@@ -65,6 +65,12 @@ Consulta la [guía de instalación, cableado y calibración](firmware/README.md)
 
 La inferencia, el historial y la configuración se procesan localmente. La aplicación no necesita un servidor remoto para clasificar residuos.
 
+## Pagina Web
+
+El proyecto tiene una pagina web existente, el link a esta es:
+
+https://santicaballerocuenca-dot.github.io/Eco-Touchless-Software/
+
 ## 📄 Licencia
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
