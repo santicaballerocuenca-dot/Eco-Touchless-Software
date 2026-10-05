@@ -2,7 +2,7 @@
 
 Aplicación Flutter para clasificar residuos en tiempo real mediante inteligencia artificial ejecutada directamente en el dispositivo, con integración opcional a un clasificador físico basado en ESP32.
 
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.1.0-21c997)](../../releases/tag/v1.1.0)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.2.0-21c997)](../../releases/tag/v1.2.0)
 [![Flutter](https://img.shields.io/badge/Flutter-3.35.2-02569B?logo=flutter)](https://flutter.dev/)
 
 ## Características
