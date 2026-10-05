@@ -65,5 +65,48 @@ void main() {
       expect(resultadoFinal.activo, isFalse);
       expect(resultadoFinal.cambio, isTrue);
     });
+
+    test('descarta cambios dispersos que no forman un grupo', () {
+      final detector = DetectorMovimientoV2();
+      final anterior = List<double>.filled(256, 80);
+      final actual = List<double>.from(anterior);
+      // Tablero de ajedrez: muchas celdas cambian, ninguna contigua.
+      for (var i = 0; i < 256; i++) {
+        final x = i % 16;
+        final y = i ~/ 16;
+        if ((x + y).isEven && i % 3 == 0) actual[i] = 160;
+      }
+
+      final resultado = detector.procesar(
+        anterior: anterior,
+        actual: actual,
+        sensibilidad: 0.9,
+      );
+
+      expect(resultado.grupoMayor, lessThan(3));
+      expect(resultado.activo, isFalse);
+    });
+
+    test('con poca luz detecta cambios de menor contraste', () {
+      final anterior = List<double>.filled(256, 30);
+      final actual = List<double>.from(anterior);
+      for (var i = 0; i < 64; i++) {
+        actual[i] = 42;
+      }
+      final detector = DetectorMovimientoV2();
+      // Sin cambio fuerte hacen falta dos frames consecutivos.
+      detector.procesar(
+        anterior: anterior,
+        actual: actual,
+        sensibilidad: 0.5,
+      );
+      final oscuro = detector.procesar(
+        anterior: anterior,
+        actual: actual,
+        sensibilidad: 0.5,
+      );
+      expect(oscuro.activo, isTrue);
+      expect(oscuro.umbral, lessThan(10));
+    });
   });
 }

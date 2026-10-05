@@ -10,9 +10,9 @@ void main() {
   testWidgets('la aplicación inicia mostrando el onboarding', (tester) async {
     SharedPreferences.setMockInitialValues({});
     app.main();
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 2));
 
-    expect(find.text('ResiClas-IA'), findsOneWidget);
-    expect(find.text('Clasificá residuos con IA'), findsOneWidget);
+    expect(find.text('Bienvenido a ECO-TOUCHLESS'), findsOneWidget);
+    expect(find.text('Continuar'), findsOneWidget);
   });
 }

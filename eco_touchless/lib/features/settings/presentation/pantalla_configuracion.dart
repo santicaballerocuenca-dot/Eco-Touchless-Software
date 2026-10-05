@@ -10,7 +10,9 @@ import '../../esp/data/esp_service.dart';
 import '../../esp/data/esp_wifi_connector.dart';
 import '../../statistics/data/database_service.dart';
 import '../data/config_service.dart';
+import '../domain/modo_iluminacion.dart';
 import '../domain/modo_interfaz.dart';
+import '../../../app/pantalla_bienvenida.dart';
 import 'ajustes_perfil_modelo.dart';
 import '../../bench/presentation/pantalla_bench.dart';
 import '../../esp/presentation/estado_esp.dart';
@@ -39,6 +41,10 @@ class _PantallaConfiguracionState extends State<PantallaConfiguracion> {
   bool _deteccionMovimiento = false;
   double _sensibilidadMovimiento = 0.5;
   bool _capturarTrasCeseMovimiento = false;
+  int _retardoCapturaMs = 1200;
+  bool _zonaCentral = true;
+  ModoIluminacion _modoIluminacion = ModoIluminacion.automatica;
+  bool _autoaceptarManosLibres = true;
   bool _confirmacionManual = true;
   int _timeoutConfirmacionSegundos = 5;
   bool _modoContinuo = false;
@@ -96,6 +102,10 @@ class _PantallaConfiguracionState extends State<PantallaConfiguracion> {
     final movimiento = await _config.getDeteccionMovimiento();
     final sensibilidad = await _config.getSensibilidadMovimiento();
     final capturarTrasCese = await _config.getCapturarTrasCeseMovimiento();
+    final retardoCaptura = await _config.getRetardoCapturaMs();
+    final zonaCentral = await _config.getZonaCentralMovimiento();
+    final modoIluminacion = await _config.getModoIluminacion();
+    final autoaceptar = await _config.getAutoaceptarManosLibres();
     final confirmacionManual = await _config.getConfirmacionManual();
     final timeoutConfirmacion = await _config.getTimeoutConfirmacionSegundos();
     final modoContinuo = await _config.getModoContinuo();
@@ -130,6 +140,10 @@ class _PantallaConfiguracionState extends State<PantallaConfiguracion> {
       _deteccionMovimiento = movimiento;
       _sensibilidadMovimiento = sensibilidad;
       _capturarTrasCeseMovimiento = capturarTrasCese;
+      _retardoCapturaMs = retardoCaptura;
+      _zonaCentral = zonaCentral;
+      _modoIluminacion = modoIluminacion;
+      _autoaceptarManosLibres = autoaceptar;
       _confirmacionManual = confirmacionManual;
       _timeoutConfirmacionSegundos = timeoutConfirmacion;
       _modoContinuo = modoContinuo;
@@ -417,7 +431,15 @@ class _PantallaConfiguracionState extends State<PantallaConfiguracion> {
                           'Limpio y Fácil ocultan diagnósticos en la pantalla principal. '
                           'La confirmación de resultados sigue tu ajuste habitual.'),
                     ]),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 8),
+                    ListTile(
+                      leading: const Icon(Icons.school_outlined),
+                      title: const Text('Ver el tutorial de nuevo'),
+                      subtitle: const Text(
+                          'Repasá cómo clasificar sin tocar la tablet y los consejos para mejores fotos.'),
+                      onTap: _abrirTutorial,
+                    ),
+                    const SizedBox(height: 12),
                     ListTile(
                       leading: const Icon(Icons.compare),
                       title: const Text('Comparar modelos'),
@@ -648,10 +670,11 @@ class _PantallaConfiguracionState extends State<PantallaConfiguracion> {
                             ),
                           ),
                         _switch(
-                          titulo: 'Activar detección de movimiento',
+                          titulo: 'Activar modo manos libres',
                           subtitulo:
-                              'El detector v2 filtra cambios de luz y ruido, avisa '
-                              'en el visor y programa una captura automática.',
+                              'Detecta cuando acercás un residuo y saca la foto sola '
+                              'cuando queda quieto. Filtra cambios de luz, ruido y '
+                              'manos que pasan sin dejar nada.',
                           valor: _deteccionMovimiento,
                           onChanged: (v) {
                             setState(() => _deteccionMovimiento = v);
@@ -683,17 +706,110 @@ class _PantallaConfiguracionState extends State<PantallaConfiguracion> {
                             onChangeEnd: (v) =>
                                 _config.setSensibilidadMovimiento(v),
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Quieto antes de la foto: ${(_retardoCapturaMs / 1000).toStringAsFixed(1)} s',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white),
+                          ),
+                          const Text(
+                            'Más corto = más rápido; más largo = fotos más nítidas.',
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.white60),
+                          ),
+                          Slider(
+                            value: _retardoCapturaMs.toDouble(),
+                            min: 400,
+                            max: 3000,
+                            divisions: 13,
+                            label:
+                                '${(_retardoCapturaMs / 1000).toStringAsFixed(1)} s',
+                            onChanged: (v) =>
+                                setState(() => _retardoCapturaMs = v.round()),
+                            onChangeEnd: (v) =>
+                                _config.setRetardoCapturaMs(v.round()),
+                          ),
                           _switch(
-                            titulo: 'Capturar aunque el movimiento cese',
+                            titulo: 'Priorizar el centro del visor',
                             subtitulo:
-                                'Mantiene el disparo programado si el objeto queda quieto '
-                                'o sale del encuadre después de ser detectado.',
+                                'Ignora casi por completo los bordes, donde suele pasar '
+                                'gente caminando detrás del clasificador.',
+                            valor: _zonaCentral,
+                            onChanged: (v) {
+                              setState(() => _zonaCentral = v);
+                              _config.setZonaCentralMovimiento(v);
+                            },
+                          ),
+                          _switch(
+                            titulo: 'Capturar aunque no quede un objeto',
+                            subtitulo:
+                                'Dispara al terminar cualquier movimiento, aunque la '
+                                'escena vuelva a quedar como antes (útil si el residuo '
+                                'se arroja rápido).',
                             valor: _capturarTrasCeseMovimiento,
                             onChanged: (v) {
                               setState(() => _capturarTrasCeseMovimiento = v);
                               _config.setCapturarTrasCeseMovimiento(v);
                             },
                           ),
+                          _switch(
+                            titulo: 'Aceptar sin tocar',
+                            subtitulo: _confirmacionManual
+                                ? 'En capturas automáticas el resultado se acepta solo '
+                                    'tras la cuenta regresiva; si es dudoso se descarta '
+                                    'para reintentar.'
+                                : 'La confirmación manual está desactivada: los '
+                                    'resultados ya se aceptan solos.',
+                            valor: _autoaceptarManosLibres,
+                            onChanged: (v) {
+                              setState(() => _autoaceptarManosLibres = v);
+                              _config.setAutoaceptarManosLibres(v);
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Iluminación con la pantalla',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Con poca luz la pantalla se pone blanca y al máximo '
+                            'brillo para iluminar el residuo (ideal con la cámara '
+                            'frontal de la tablet).',
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.white60),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: SegmentedButton<ModoIluminacion>(
+                              showSelectedIcon: false,
+                              segments: const [
+                                ButtonSegment(
+                                    value: ModoIluminacion.apagada,
+                                    icon: Icon(Icons.flash_off),
+                                    label: Text('Apagada')),
+                                ButtonSegment(
+                                    value: ModoIluminacion.automatica,
+                                    icon: Icon(Icons.flash_auto),
+                                    label: Text('Auto')),
+                                ButtonSegment(
+                                    value: ModoIluminacion.siempre,
+                                    icon: Icon(Icons.flash_on),
+                                    label: Text('Siempre')),
+                              ],
+                              selected: {_modoIluminacion},
+                              onSelectionChanged: (seleccion) {
+                                final modo = seleccion.first;
+                                setState(() => _modoIluminacion = modo);
+                                _config.setModoIluminacion(modo);
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                         ],
                       ],
                     ),
@@ -979,6 +1095,21 @@ class _PantallaConfiguracionState extends State<PantallaConfiguracion> {
         ),
       ),
     );
+  }
+
+  Future<void> _abrirTutorial() {
+    return Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (context) => PantallaBienvenida(
+        repaso: true,
+        manosLibresInicial: _deteccionMovimiento,
+        onComenzar: (manosLibres) async {
+          if (manosLibres != _deteccionMovimiento) {
+            await _config.setDeteccionMovimiento(manosLibres);
+          }
+          if (context.mounted) Navigator.of(context).pop();
+        },
+      ),
+    ));
   }
 
   Widget _tarjeta({required List<Widget> children, EdgeInsets? padding}) {

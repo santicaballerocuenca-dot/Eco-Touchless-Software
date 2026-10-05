@@ -13,6 +13,22 @@ Abrí **Ajustes → Tu espacio ECO-TOUCHLESS → Modo de interfaz**.
 
 La navegación inferior sigue visible para poder salir del modo Limpio. **Foto/En vivo también se cambia desde Ajustes**. Los modos visuales no desactivan la confirmación manual, el guardado ni la automatización configurada. Limpio/Fácil ocultan errores de la pantalla principal: usá Detallado o Ajustes para diagnosticarlos.
 
+## Modo manos libres
+
+Se activa en el tutorial inicial o en **Ajustes → Detección de movimiento**.
+
+1. Acercá el residuo a la cámara: el visor muestra *Te veo… mantenelo quieto*.
+2. Cuando queda quieto (0,4–3 s, configurable) la foto se saca sola.
+3. Retirá el residuo: la app vuelve a quedar lista. No repite la foto del mismo residuo.
+
+- Una mano que pasa sin dejar nada **no** dispara: se compara contra un fondo aprendido.
+- **Priorizar el centro del visor** ignora gente caminando por los bordes.
+- Si el residuo sigue moviéndose en la mano, se captura igual a los 5 s.
+- **Iluminación con la pantalla** (Apagada / Auto / Siempre): con poca luz el entorno del visor se vuelve blanco, la pantalla sube al máximo brillo y, al capturar, toda la pantalla destella en blanco para iluminar el residuo (ideal con la cámara frontal).
+- **Aceptar sin tocar**: en capturas automáticas el resultado se acepta solo tras la cuenta regresiva; si es dudoso se descarta para reintentar.
+
+El tutorial se puede repasar desde **Ajustes → Ver el tutorial de nuevo**.
+
 ## Exportar el historial
 
 1. Entrá en **Estadísticas**, buscá **Historial** y elegí la categoría o **Todos**.
@@ -34,7 +50,7 @@ Los archivos se preparan en la caché privada antes de compartir; **guardalos fu
 
 ## Alcance de esta actualización
 
-Nombre visible ECO-TOUCHLESS, nueva paleta azul noche/menta, controles redondeados y fondos sin cámara en Ajustes/Estadísticas. El icono queda pendiente del logo nuevo. El paquete nativo ahora es `com.ecotouchless.app` y la base de datos se llama `eco_touchless.db`.
+Nombre visible ECO-TOUCHLESS, nueva paleta azul noche/menta, controles redondeados y fondos sin cámara en Ajustes/Estadísticas. El ícono de la app, el splash de Android y la portada del tutorial usan el logo oficial (`assets/branding/logo_eco_touchless.png`). El paquete nativo ahora es `com.ecotouchless.app` y la base de datos se llama `eco_touchless.db`.
 
 Esta actualización no modifica firmware, GPIO, credenciales, protocolo ni servicios de conexión ESP32. Añade únicamente la lectura del estado ya disponible para registrarlo en el historial.
 

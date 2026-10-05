@@ -17,7 +17,9 @@ Aplicación Flutter para clasificar residuos en tiempo real mediante inteligenci
 - Comunicación Wi-Fi con una ESP32 para controlar el clasificador físico. (Parte proyecto)
 ## Principales Funciones
 
-- Uso de detección de movimiento para capturar fotos automaticamente sin necesidad de tocar la tablet.
+- Modo manos libres: detecta cuando acercás un residuo y saca la foto sola cuando queda quieto, sin tocar la tablet. Ignora manos que pasan sin dejar nada y no repite la foto del mismo residuo.
+- Con poca luz, la pantalla se ilumina en blanco para obtener una foto más clara.
+- Tutorial de introducción con portada, guía de uso y consejos para mejores resultados.
 - Opción para ingresar tu propio modelo en la app desde el codigo fuente.
 - Al usarlo con el ESP32, puedes crear un aparato clasificador de residuos automático para plazas públicas, hospitales, etc.
 
