@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
+import '../domain/modo_iluminacion.dart';
 import '../domain/modo_interfaz.dart';
 import '../../classification/domain/perfil_modelo.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,6 +26,10 @@ class ConfigService extends ChangeNotifier {
   static const _kUmbralModoContinuo = 'umbral_modo_continuo';
   static const _kGuiaModoContinuoVista = 'guia_modo_continuo_vista';
   static const _kModeloSeleccionado = 'modelo_seleccionado';
+  static const _kRetardoCapturaMs = 'retardo_captura_ms';
+  static const _kZonaCentralMovimiento = 'zona_central_movimiento';
+  static const _kModoIluminacion = 'modo_iluminacion';
+  static const _kAutoaceptarManosLibres = 'autoaceptar_manos_libres';
 
   // --- Vinculación con la ESP32 del clasificador físico ---
   static const _kEspHabilitado = 'esp_habilitado';
@@ -230,6 +235,54 @@ class ConfigService extends ChangeNotifier {
   Future<void> setCapturarTrasCeseMovimiento(bool valor) async {
     final prefs = await _prefsInstancia;
     await prefs.setBool(_kCapturarTrasCeseMovimiento, valor);
+    notifyListeners();
+  }
+
+  // --- Manos libres: tiempo que el residuo debe quedar quieto antes de la foto ---
+  Future<int> getRetardoCapturaMs() async {
+    final prefs = await _prefsInstancia;
+    return (prefs.getInt(_kRetardoCapturaMs) ?? 1200).clamp(400, 3000);
+  }
+
+  Future<void> setRetardoCapturaMs(int valor) async {
+    final prefs = await _prefsInstancia;
+    await prefs.setInt(_kRetardoCapturaMs, valor.clamp(400, 3000));
+    notifyListeners();
+  }
+
+  // --- Manos libres: priorizar el centro del visor e ignorar los bordes ---
+  Future<bool> getZonaCentralMovimiento() async {
+    final prefs = await _prefsInstancia;
+    return prefs.getBool(_kZonaCentralMovimiento) ?? true;
+  }
+
+  Future<void> setZonaCentralMovimiento(bool valor) async {
+    final prefs = await _prefsInstancia;
+    await prefs.setBool(_kZonaCentralMovimiento, valor);
+    notifyListeners();
+  }
+
+  // --- Pantalla blanca como luz de relleno cuando hay poca luz ---
+  Future<ModoIluminacion> getModoIluminacion() async {
+    final prefs = await _prefsInstancia;
+    return ModoIluminacion.desde(prefs.getString(_kModoIluminacion));
+  }
+
+  Future<void> setModoIluminacion(ModoIluminacion modo) async {
+    final prefs = await _prefsInstancia;
+    await prefs.setString(_kModoIluminacion, modo.name);
+    notifyListeners();
+  }
+
+  // --- Aceptar sin tocar los resultados de capturas automáticas ---
+  Future<bool> getAutoaceptarManosLibres() async {
+    final prefs = await _prefsInstancia;
+    return prefs.getBool(_kAutoaceptarManosLibres) ?? true;
+  }
+
+  Future<void> setAutoaceptarManosLibres(bool valor) async {
+    final prefs = await _prefsInstancia;
+    await prefs.setBool(_kAutoaceptarManosLibres, valor);
     notifyListeners();
   }
 

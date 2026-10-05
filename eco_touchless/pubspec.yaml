@@ -50,6 +50,20 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon.png"
+  # Ícono adaptativo (Android 8+): el logo queda dentro de la zona segura
+  # sobre fondo blanco, así el launcher puede recortarlo en círculo o squircle.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon_foreground.png"
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/icon.png"
+    background_color: "#0B1220"
+    theme_color: "#63CDBD"
+  windows:
+    generate: true
+    image_path: "assets/icon.png"
+    icon_size: 256
   # Se sube de 21 a 26: plugin_wifi_connect (conexión automática al AP de la
   # ESP32) requiere las APIs modernas de Wi-Fi de Android, que solo están
   # completas desde Android 8 (API 26) en adelante. Con min_sdk 21 la
@@ -64,3 +78,4 @@ flutter:
     - assets/bench/
     - assets/labels.txt
     - assets/icon.png
+    - assets/branding/

@@ -55,6 +55,21 @@ class MainActivity : FlutterActivity() {
                 }
             } catch (e: Exception) { result.error("WIFI", e.message, null) }
         }
+        // Brillo de la ventana: la app usa la pantalla en blanco como luz de
+        // relleno cuando la cámara detecta poca luz. -1 vuelve al del sistema.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "eco_touchless/pantalla").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "brillo" -> {
+                    val valor = call.argument<Double>("valor") ?: -1.0
+                    val atributos = window.attributes
+                    atributos.screenBrightness = if (valor < 0) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                        else valor.toFloat().coerceIn(0.01f, 1f)
+                    window.attributes = atributos
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     // Keep one local-only request alive. Recreating it on every heartbeat tears

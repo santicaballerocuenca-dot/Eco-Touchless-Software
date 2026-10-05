@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import '../../../core/services/brillo_pantalla.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/domain/categoria_residuo.dart';
 import '../../../core/widgets/fondo_camara.dart';
@@ -15,11 +16,12 @@ import '../data/clasificador_service.dart';
 import '../data/modelo_catalogo_service.dart';
 import '../domain/clasificacion.dart';
 import '../domain/control_disparo_continuo.dart';
-import '../domain/detector_movimiento_v2.dart';
+import '../domain/control_manos_libres.dart';
 import '../domain/modelo_ia.dart';
 import '../domain/preparacion_imagen.dart';
 import '../../esp/presentation/estado_esp.dart';
 import '../../esp/data/esp_conexion_monitor.dart';
+import '../../settings/domain/modo_iluminacion.dart';
 import '../../settings/domain/modo_interfaz.dart';
 
 class PantallaClasificacion extends StatefulWidget {
@@ -77,20 +79,29 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
   ModeloIa? _modeloSeleccionado;
 
   bool _streamActivo = false;
-  bool _movimientoDetectado = false;
   DateTime _ultimoChequeoMovimiento = DateTime.now();
-  List<double>? _frameAnteriorLuma;
-  final _detectorMovimiento = DetectorMovimientoV2();
-  DateTime? _ultimoDisparoAutomatico;
 
-  // --- Disparo automático tras detectar movimiento ---
-  // El detector v2 filtra exposición y ruido antes de iniciar esta cuenta.
-  // Según la preferencia del usuario, la cuenta se cancela al volver a la
-  // quietud o permanece armada para capturar el objeto una vez detenido.
-  static const Duration _retardoDisparoAutomatico = Duration(seconds: 2);
-  static const Duration _enfriamientoDisparoAutomatico = Duration(seconds: 5);
-  Timer? _timerDisparoAutomatico;
-  int _cuentaRegresivaSegundos = 0;
+  // --- Manos libres: disparo automático sin tocar la tablet ---
+  // El motor combina movimiento, presencia de un objeto frente al fondo
+  // aprendido y quietud: la foto se saca cuando el residuo queda quieto
+  // delante de la cámara, y no se repite hasta que lo retiran.
+  final _manosLibres = ControlManosLibres();
+  FaseManosLibres _faseManosLibres = FaseManosLibres.esperando;
+  double _progresoQuietud = 0;
+  int _retardoCapturaMs = 1200;
+  bool _zonaCentral = true;
+  bool _autoaceptarManosLibres = true;
+
+  // --- Poca luz: la pantalla se ilumina en blanco como luz de relleno ---
+  ModoIluminacion _modoIluminacion = ModoIluminacion.automatica;
+  bool _pocaLuz = false;
+  bool _luzRelleno = false;
+  bool _flashPantalla = false;
+  bool _desechando = false;
+
+  /// Un resultado dudoso de una captura automática se descarta solo; esto
+  /// permite reintentar sin tener que retirar el residuo.
+  bool _reintentarManosLibres = false;
 
   // --- Envío a la ESP32 ---
   String? _espMensaje;
@@ -154,6 +165,10 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
     final confirmacionManual = await _config.getConfirmacionManual();
     final timeoutConfirmacion = await _config.getTimeoutConfirmacionSegundos();
     final capturarTrasCese = await _config.getCapturarTrasCeseMovimiento();
+    final retardoCaptura = await _config.getRetardoCapturaMs();
+    final zonaCentral = await _config.getZonaCentralMovimiento();
+    final modoIluminacion = await _config.getModoIluminacion();
+    final autoaceptar = await _config.getAutoaceptarManosLibres();
     final modoContinuo = await _config.getModoContinuo();
     final modoInterfaz = await _config.getModoInterfaz();
     final umbralContinuo = await _config.getUmbralModoContinuo();
@@ -186,6 +201,10 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
       _confirmacionManual = confirmacionManual;
       _timeoutConfirmacionSegundos = timeoutConfirmacion;
       _capturarTrasCeseMovimiento = capturarTrasCese;
+      _retardoCapturaMs = retardoCaptura;
+      _zonaCentral = zonaCentral;
+      _modoIluminacion = modoIluminacion;
+      _autoaceptarManosLibres = autoaceptar;
       _modoContinuo = modoContinuo;
       _umbralModoContinuo = umbralContinuo;
       _modeloSeleccionado = modelo;
@@ -197,9 +216,7 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
       }
     });
 
-    if (!capturarTrasCese && !_movimientoDetectado) {
-      _cancelarCuentaRegresivaDisparo();
-    }
+    _actualizarLuzRelleno();
     if (modoContinuoAnterior != modoContinuo) {
       _reiniciarEstadoContinuo();
       if (modoContinuo) {
@@ -277,6 +294,7 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
         _streamActivo = false;
         debugPrint('No se pudo iniciar el stream de movimiento: $e');
       }));
+      _actualizarLuzRelleno();
     } else if (!requiereStream && _streamActivo) {
       unawaited(_detenerStreamMovimiento());
     }
@@ -380,13 +398,25 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
     await envio;
   }
 
-  Future<void> _detenerStreamMovimiento() async {
+  /// Detiene el stream de la cámara. Con [reiniciarManosLibres] en `false`
+  /// (pausa para sacar una foto) se conserva el fondo aprendido y el estado
+  /// de armado, para no volver a fotografiar el mismo residuo al reanudar.
+  Future<void> _detenerStreamMovimiento({
+    bool reiniciarManosLibres = true,
+  }) async {
     final controller = _camara.controller;
     final estabaActivo = _streamActivo;
     _streamActivo = false;
-    _cancelarCuentaRegresivaDisparo();
-    if (_movimientoDetectado && mounted) {
-      setState(() => _movimientoDetectado = false);
+    if (reiniciarManosLibres) {
+      _manosLibres.reiniciar();
+      _actualizarEstado(() {
+        _faseManosLibres = FaseManosLibres.esperando;
+        _progresoQuietud = 0;
+        _pocaLuz = false;
+      });
+      _actualizarLuzRelleno();
+    } else {
+      _manosLibres.pausar();
     }
     if (estabaActivo &&
         controller != null &&
@@ -397,8 +427,64 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
         debugPrint('No se pudo detener el stream de movimiento: $e');
       }
     }
-    _frameAnteriorLuma = null;
-    _detectorMovimiento.reset();
+  }
+
+  /// setState tolerante a llamadas durante dispose().
+  void _actualizarEstado(VoidCallback cambio) {
+    if (mounted && !_desechando) {
+      setState(cambio);
+    } else {
+      cambio();
+    }
+  }
+
+  bool get _manosLibresActivo => _deteccionMovimientoActiva && !_modoContinuo;
+
+  /// Enciende o apaga la luz de relleno (fondo blanco + brillo máximo) según
+  /// el modo de iluminación y la oscuridad detectada.
+  void _actualizarLuzRelleno() {
+    final encender = !_desechando &&
+        widget.visible &&
+        _manosLibresActivo &&
+        (_streamActivo || _isProcessing) &&
+        switch (_modoIluminacion) {
+          ModoIluminacion.apagada => false,
+          ModoIluminacion.automatica => _pocaLuz,
+          ModoIluminacion.siempre => true,
+        };
+    if (encender == _luzRelleno) return;
+    _actualizarEstado(() => _luzRelleno = encender);
+    // La escena cambia de brillo de golpe: el fondo aprendido ya no sirve.
+    _manosLibres.notificarCambioIluminacion();
+    _sincronizarBrillo();
+  }
+
+  void _sincronizarBrillo() {
+    if (!_desechando && (_luzRelleno || _flashPantalla)) {
+      unawaited(BrilloPantalla.maximo());
+    } else {
+      unawaited(BrilloPantalla.restaurar());
+    }
+  }
+
+  bool get _debeIluminarCaptura => switch (_modoIluminacion) {
+        ModoIluminacion.apagada => false,
+        ModoIluminacion.automatica => _pocaLuz || _luzRelleno,
+        ModoIluminacion.siempre => true,
+      };
+
+  /// Pantalla completa en blanco y brillo máximo justo antes de la foto. La
+  /// espera deja que la exposición automática de la cámara se adapte.
+  Future<void> _encenderFlashPantalla() async {
+    if (!mounted) return;
+    setState(() => _flashPantalla = true);
+    _sincronizarBrillo();
+    await Future<void>.delayed(const Duration(milliseconds: 650));
+  }
+
+  void _apagarFlashPantalla() {
+    _actualizarEstado(() => _flashPantalla = false);
+    _sincronizarBrillo();
   }
 
   void _reiniciarEstadoContinuo() {
@@ -489,115 +575,85 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
     );
   }
 
-  /// Extrae una cuadrícula del plano Y de YUV420 y la entrega al detector v2,
-  /// que compensa exposición global, aprende ruido y aplica histéresis.
+  /// Analiza ~5 frames por segundo con el motor manos libres: decide cuándo
+  /// sacar la foto sola y si hace falta iluminar la escena con la pantalla.
   void _procesarFrameMovimiento(CameraImage frame) {
     final ahora = DateTime.now();
-    if (ahora.difference(_ultimoChequeoMovimiento).inMilliseconds < 250) return;
+    if (ahora.difference(_ultimoChequeoMovimiento).inMilliseconds < 200) return;
     _ultimoChequeoMovimiento = ahora;
-    if (_isProcessing) return;
+    if (_isProcessing || !widget.visible) return;
 
     try {
-      final plano = frame.planes[0];
-      final bytes = plano.bytes;
-      final ancho = frame.width;
-      final alto = frame.height;
-      // bytesPerRow puede ser mayor que el ancho real por padding de fila:
-      // hay que usarlo para indexar, no `ancho`, o el muestreo se desalinea
-      // progresivamente fila a fila en varios dispositivos Android.
-      final stride = plano.bytesPerRow;
-
-      const grilla = 16;
-      final bloqueAncho = ancho ~/ grilla;
-      final bloqueAlto = alto ~/ grilla;
-      if (bloqueAncho == 0 || bloqueAlto == 0) return;
-
-      final actual = List<double>.filled(grilla * grilla, 0);
-
-      for (int by = 0; by < grilla; by++) {
-        for (int bx = 0; bx < grilla; bx++) {
-          int suma = 0;
-          int cuenta = 0;
-          final startY = by * bloqueAlto;
-          final startX = bx * bloqueAncho;
-          for (int y = startY; y < startY + bloqueAlto && y < alto; y += 4) {
-            final filaBase = y * stride;
-            for (int x = startX;
-                x < startX + bloqueAncho && x < ancho;
-                x += 4) {
-              suma += bytes[filaBase + x];
-              cuenta++;
-            }
-          }
-          actual[by * grilla + bx] = cuenta > 0 ? suma / cuenta : 0;
-        }
-      }
-
-      if (_frameAnteriorLuma != null) {
-        final resultado = _detectorMovimiento.procesar(
-          anterior: _frameAnteriorLuma!,
-          actual: actual,
+      final grilla = _grillaLuma(frame);
+      if (grilla == null) return;
+      final estado = _manosLibres.procesar(
+        grilla,
+        ahora: ahora,
+        iluminando: _luzRelleno,
+        config: ConfiguracionManosLibres(
           sensibilidad: _sensibilidadMovimiento,
-        );
-
-        if (resultado.cambio && mounted) {
-          setState(() => _movimientoDetectado = resultado.activo);
-          if (resultado.activo) {
-            _iniciarCuentaRegresivaDisparo();
-          } else if (!_capturarTrasCeseMovimiento) {
-            _cancelarCuentaRegresivaDisparo();
-          }
-        }
+          retardoQuietud: Duration(milliseconds: _retardoCapturaMs),
+          zonaCentral: _zonaCentral,
+          requierePresencia: !_capturarTrasCeseMovimiento,
+        ),
+      );
+      if (!mounted) return;
+      // Se cuantiza el progreso para no reconstruir la UI en cada frame.
+      final progreso = (estado.progreso * 20).round() / 20;
+      if (estado.fase != _faseManosLibres ||
+          progreso != _progresoQuietud ||
+          estado.oscuro != _pocaLuz) {
+        setState(() {
+          _faseManosLibres = estado.fase;
+          _progresoQuietud = progreso;
+          _pocaLuz = estado.oscuro;
+        });
       }
-      _frameAnteriorLuma = actual;
+      if (estado.cambioOscuridad) _actualizarLuzRelleno();
+      if (estado.capturar) {
+        unawaited(_takePictureAndProcess(automatica: true));
+      }
     } catch (e) {
       debugPrint('Error en detección de movimiento: $e');
     }
   }
 
-  /// Arranca (o reinicia) la cuenta regresiva de 2 segundos que, al llegar
-  /// a cero, dispara la foto automáticamente. Se muestra en pantalla para
-  /// que el usuario sepa que está por sacarse la foto y pueda, por ejemplo,
-  /// terminar de acomodar el residuo frente a la cámara.
-  void _iniciarCuentaRegresivaDisparo() {
-    final ultimoDisparo = _ultimoDisparoAutomatico;
-    if (ultimoDisparo != null &&
-        DateTime.now().difference(ultimoDisparo) <
-            _enfriamientoDisparoAutomatico) {
-      return;
-    }
-    _timerDisparoAutomatico?.cancel();
-    if (_isProcessing) return;
+  /// Promedia el plano Y (luminancia) de YUV420 en una grilla de 16×16.
+  static List<double>? _grillaLuma(CameraImage frame) {
+    final plano = frame.planes[0];
+    final bytes = plano.bytes;
+    final ancho = frame.width;
+    final alto = frame.height;
+    // bytesPerRow puede ser mayor que el ancho real por padding de fila:
+    // hay que usarlo para indexar, no `ancho`, o el muestreo se desalinea
+    // progresivamente fila a fila en varios dispositivos Android.
+    final stride = plano.bytesPerRow;
 
-    setState(
-        () => _cuentaRegresivaSegundos = _retardoDisparoAutomatico.inSeconds);
+    const grilla = 16;
+    final bloqueAncho = ancho ~/ grilla;
+    final bloqueAlto = alto ~/ grilla;
+    if (bloqueAncho == 0 || bloqueAlto == 0) return null;
 
-    _timerDisparoAutomatico =
-        Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted || (!_movimientoDetectado && !_capturarTrasCeseMovimiento)) {
-        timer.cancel();
-        return;
+    final actual = List<double>.filled(grilla * grilla, 0);
+    for (int by = 0; by < grilla; by++) {
+      for (int bx = 0; bx < grilla; bx++) {
+        int suma = 0;
+        int cuenta = 0;
+        final startY = by * bloqueAlto;
+        final startX = bx * bloqueAncho;
+        for (int y = startY; y < startY + bloqueAlto && y < alto; y += 4) {
+          final filaBase = y * stride;
+          for (int x = startX; x < startX + bloqueAncho && x < ancho; x += 4) {
+            final indice = filaBase + x;
+            if (indice >= bytes.length) break;
+            suma += bytes[indice];
+            cuenta++;
+          }
+        }
+        actual[by * grilla + bx] = cuenta > 0 ? suma / cuenta : 0;
       }
-      final restante = _cuentaRegresivaSegundos - 1;
-      if (restante <= 0) {
-        timer.cancel();
-        setState(() => _cuentaRegresivaSegundos = 0);
-        _ultimoDisparoAutomatico = DateTime.now();
-        _takePictureAndProcess();
-      } else {
-        setState(() => _cuentaRegresivaSegundos = restante);
-      }
-    });
-  }
-
-  /// Cancela el disparo automático si el movimiento cesó antes de tiempo
-  /// (por ejemplo, alguien acercó la mano y la sacó sin dejar nada).
-  void _cancelarCuentaRegresivaDisparo() {
-    _timerDisparoAutomatico?.cancel();
-    _timerDisparoAutomatico = null;
-    if (_cuentaRegresivaSegundos != 0 && mounted) {
-      setState(() => _cuentaRegresivaSegundos = 0);
     }
+    return actual;
   }
 
   @override
@@ -606,8 +662,9 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
     _camara.removeListener(_onCamaraActualizada);
     _config.removeListener(_onConfiguracionActualizada);
     _database.removeListener(_onHistorialActualizado);
-    _timerDisparoAutomatico?.cancel();
+    _desechando = true;
     unawaited(_detenerStreamMovimiento());
+    unawaited(BrilloPantalla.restaurar());
     if (_ultimaFotoEsTemporal && _ultimaFotoPath != null) {
       unawaited(_borrarArchivoSiExiste(_ultimaFotoPath!));
     }
@@ -637,7 +694,7 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
     return destino;
   }
 
-  Future<void> _takePictureAndProcess() async {
+  Future<void> _takePictureAndProcess({bool automatica = false}) async {
     final controller = _camara.controller;
     if (controller == null ||
         !controller.value.isInitialized ||
@@ -655,18 +712,14 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
       return;
     }
 
-    // Cancelamos cualquier cuenta regresiva pendiente: la foto ya se está
-    // tomando ahora (sea porque el usuario tocó el botón o porque el
-    // temporizador de movimiento llegó a cero), así que no debe quedar un
-    // segundo disparo programado sobre esta misma escena.
-    _cancelarCuentaRegresivaDisparo();
-
     // Si había un stream de detección de movimiento activo, se detiene
     // temporalmente: no se puede tomar una foto con takePicture() mientras
-    // hay un stream de imágenes corriendo sobre el mismo controller.
+    // hay un stream de imágenes corriendo sobre el mismo controller. El motor
+    // manos libres conserva su fondo y no vuelve a disparar sobre el mismo
+    // residuo hasta que lo retiren.
     final streamEstabaActivo = _streamActivo;
     if (streamEstabaActivo) {
-      await _detenerStreamMovimiento();
+      await _detenerStreamMovimiento(reiniciarManosLibres: false);
     }
 
     if (!mounted) return;
@@ -682,7 +735,14 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
     final fechaCaptura = DateTime.now();
     final espAlCapturar = _espVinculadaAlClasificar;
     try {
-      final xFile = await controller.takePicture();
+      final iluminar = _debeIluminarCaptura;
+      if (iluminar) await _encenderFlashPantalla();
+      final XFile xFile;
+      try {
+        xFile = await controller.takePicture();
+      } finally {
+        if (iluminar) _apagarFlashPantalla();
+      }
       capturaTemporal = xFile.path;
       final bytes = await File(xFile.path).readAsBytes();
       final reloj = Stopwatch()..start();
@@ -718,11 +778,20 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
           unawaited(_borrarArchivoSiExiste(fotoAnterior));
         }
 
-        final labelConfirmada = await _solicitarConfirmacion(result);
+        _reintentarManosLibres = false;
+        final labelConfirmada = await _solicitarConfirmacion(
+          result,
+          automatica: automatica,
+        );
         if (!mounted) return;
         if (labelConfirmada == null) {
+          final reintentar = _reintentarManosLibres;
+          if (reintentar) _manosLibres.rearmar();
           setState(() {
-            _espMensaje = 'Resultado sin confirmar: no se guardó ni se envió.';
+            _espMensaje = reintentar
+                ? 'Resultado dudoso: no se guardó. Volvé a mostrar el residuo '
+                    'más cerca y con buena luz.'
+                : 'Resultado sin confirmar: no se guardó ni se envió.';
             _espMensajeEsError = false;
             _isProcessing = false;
           });
@@ -812,8 +881,9 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
   }
 
   Future<String?> _solicitarConfirmacion(
-    ResultadoClasificacion resultado,
-  ) async {
+    ResultadoClasificacion resultado, {
+    bool automatica = false,
+  }) async {
     _confirmacionFueManual = _confirmacionManual;
     if (!_confirmacionManual) {
       for (var restante = _timeoutConfirmacionSegundos;
@@ -829,62 +899,32 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
       return mounted ? resultado.label : null;
     }
 
+    // Manos libres: la hoja se resuelve sola si nadie la toca. Un resultado
+    // confiable se acepta; uno dudoso se descarta para volver a intentar.
+    final sinTocar = automatica && _autoaceptarManosLibres;
+    final dudoso = resultado.confianza < _umbralConfianza;
     final alternativas = _clasificador.labels
         .where((label) => label != 'Fondo')
         .toList(growable: false);
-    return showModalBottomSheet<String>(
+    var resueltaSola = false;
+    final respuesta = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Confirmá el resultado',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'La IA detectó ${CategoriaResiduo.nombreVisible(resultado.label)} '
-                'con ${resultado.confianza.toStringAsFixed(1)}% de confianza.',
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () => Navigator.pop(context, resultado.label),
-                icon: const Icon(Icons.check),
-                label: const Text('Confirmar resultado'),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'O corregí la categoría:',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final label in alternativas)
-                    ActionChip(
-                      label: Text(CategoriaResiduo.nombreVisible(label)),
-                      onPressed: () => Navigator.pop(context, label),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar y no guardar'),
-              ),
-            ],
-          ),
-        ),
+      builder: (context) => _HojaConfirmacion(
+        resultado: resultado,
+        alternativas: alternativas,
+        cuentaRegresiva:
+            sinTocar ? Duration(seconds: _timeoutConfirmacionSegundos) : null,
+        descartarAlTerminar: dudoso,
+        onResueltaSola: () => resueltaSola = true,
       ),
     );
+    if (resueltaSola) {
+      _confirmacionFueManual = false;
+      _reintentarManosLibres = dudoso;
+    }
+    return respuesta;
   }
 
   /// Envía el label reconocido a la ESP32 para que abra el servo
@@ -919,10 +959,11 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
           ? AppColors.neonCian
           : AppColors.ambar;
     }
-    if (_deteccionMovimientoActiva && _movimientoDetectado) {
+    if (_manosLibresActivo &&
+        (_faseManosLibres == FaseManosLibres.movimiento ||
+            _faseManosLibres == FaseManosLibres.estabilizando)) {
       return AppColors.ambar;
     }
-    if (_cuentaRegresivaSegundos > 0) return AppColors.ambar;
     if (_resultadoDudoso) return AppColors.ambar;
     return AppColors.limaVivo;
   }
@@ -1040,10 +1081,12 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
                             padding: EdgeInsets.only(top: 10),
                             child: Text(
                                 'Probá con mejor luz y centrá el objeto.')),
-                      if (_cuentaRegresivaSegundos > 0)
-                        Text('Capturando en $_cuentaRegresivaSegundos s…'),
-                      if (_movimientoDetectado && !_modoContinuo)
-                        const Text('Movimiento detectado'),
+                      if (_manosLibresActivo)
+                        Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                                'Manos libres: ${_IndicadorManosLibres.texto(_faseManosLibres)}'
+                                '${_pocaLuz ? ' · poca luz' : ''}')),
                     ]))),
         const SizedBox(height: 12),
         const EstadoEsp(),
@@ -1125,80 +1168,110 @@ class _PantallaClasificacionState extends State<PantallaClasificacion>
 
   Widget _areaCaptura() {
     final perfil = _clasificador.perfil;
-    return Column(children: [
-      Expanded(
-          child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: LayoutBuilder(builder: (context, box) {
-                final ratio =
-                    perfil.redimensionar ? perfil.ancho / perfil.alto : 1.0;
-                final width = (box.maxHeight * ratio).clamp(0.0, box.maxWidth);
-                final height = width / ratio;
-                return Center(
-                    child: ClipRRect(
-                        borderRadius: BorderRadius.circular(28),
-                        child: SizedBox(
-                            width: width,
-                            height: height,
-                            child: Stack(fit: StackFit.expand, children: [
-                              FondoCamara(
-                                  controller: _camara.controller,
-                                  ajuste: perfil.letterbox
-                                      ? BoxFit.contain
-                                      : BoxFit.cover),
-                              IgnorePointer(
-                                  child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(28),
-                                          border: Border.all(
-                                              color: _modoContinuo
-                                                  ? AppColors.neonCian
-                                                      .withValues(alpha: 0.65)
-                                                  : Colors.white
-                                                      .withValues(alpha: 0.3),
-                                              width: 2)))),
-                              if (!_limpio)
-                                Positioned(
-                                    top: 8,
-                                    right: 8,
-                                    child: IconButton.filledTonal(
-                                        tooltip: _camara.frontal
-                                            ? 'Cambiar a cámara trasera'
-                                            : 'Cambiar a cámara frontal',
-                                        onPressed: !_isProcessing &&
-                                                _camara.puedeCambiar
-                                            ? _cambiarCamaraPrincipal
-                                            : null,
-                                        icon: const Icon(Icons.cameraswitch))),
-                              if (_modoContinuo && _detallado)
-                                const Positioned(
-                                    left: 16,
-                                    top: 18,
-                                    child: Text('● EN VIVO',
-                                        style: TextStyle(
-                                            color: AppColors.neonCian,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700))),
-                            ]))));
-              }))),
-      if (!_modoContinuo)
-        Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _BotonDisparo(
-                diametro: _limpio ? 96 : 80,
-                activo: !_isProcessing && _camara.lista && _clasificador.listo,
-                procesando: _isProcessing,
-                onPressed: _takePictureAndProcess)),
-      if (_modoContinuo && _desarrollador)
-        Padding(
-            padding: const EdgeInsets.all(8),
-            child: _AyudaCompactaEnVivo(onAyuda: _mostrarGuiaModoContinuo)),
-    ]);
+    // Con poca luz el entorno del visor se vuelve blanco y la pantalla sube
+    // el brillo: funciona como un aro de luz para la cámara frontal.
+    return AnimatedContainer(
+        duration: const Duration(milliseconds: 350),
+        color: _luzRelleno ? Colors.white : Colors.transparent,
+        child: Column(children: [
+          Expanded(
+              child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: LayoutBuilder(builder: (context, box) {
+                    final ratio =
+                        perfil.redimensionar ? perfil.ancho / perfil.alto : 1.0;
+                    final width =
+                        (box.maxHeight * ratio).clamp(0.0, box.maxWidth);
+                    final height = width / ratio;
+                    return Center(
+                        child: ClipRRect(
+                            borderRadius: BorderRadius.circular(28),
+                            child: SizedBox(
+                                width: width,
+                                height: height,
+                                child: Stack(fit: StackFit.expand, children: [
+                                  FondoCamara(
+                                      controller: _camara.controller,
+                                      ajuste: perfil.letterbox
+                                          ? BoxFit.contain
+                                          : BoxFit.cover),
+                                  IgnorePointer(
+                                      child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(28),
+                                              border: Border.all(
+                                                  color: _modoContinuo
+                                                      ? AppColors.neonCian
+                                                          .withValues(
+                                                              alpha: 0.65)
+                                                      : Colors.white.withValues(
+                                                          alpha: 0.3),
+                                                  width: 2)))),
+                                  if (!_limpio)
+                                    Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: IconButton.filledTonal(
+                                            tooltip: _camara.frontal
+                                                ? 'Cambiar a cámara trasera'
+                                                : 'Cambiar a cámara frontal',
+                                            onPressed: !_isProcessing &&
+                                                    _camara.puedeCambiar
+                                                ? _cambiarCamaraPrincipal
+                                                : null,
+                                            icon: const Icon(
+                                                Icons.cameraswitch))),
+                                  if (_modoContinuo && _detallado)
+                                    const Positioned(
+                                        left: 16,
+                                        top: 18,
+                                        child: Text('● EN VIVO',
+                                            style: TextStyle(
+                                                color: AppColors.neonCian,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700))),
+                                  if (_manosLibresActivo && !_isProcessing)
+                                    Positioned(
+                                        left: 12,
+                                        right: 12,
+                                        bottom: 12,
+                                        child: IgnorePointer(
+                                            child: _IndicadorManosLibres(
+                                                fase: _faseManosLibres,
+                                                progreso: _progresoQuietud,
+                                                pocaLuz: _pocaLuz,
+                                                iluminando: _luzRelleno))),
+                                ]))));
+                  }))),
+          if (!_modoContinuo)
+            Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _BotonDisparo(
+                    diametro: _limpio ? 96 : 80,
+                    sobreFondoClaro: _luzRelleno,
+                    activo:
+                        !_isProcessing && _camara.lista && _clasificador.listo,
+                    procesando: _isProcessing,
+                    onPressed: _takePictureAndProcess)),
+          if (_modoContinuo && _desarrollador)
+            Padding(
+                padding: const EdgeInsets.all(8),
+                child: _AyudaCompactaEnVivo(onAyuda: _mostrarGuiaModoContinuo)),
+        ]));
   }
 
   @override
   Widget build(BuildContext context) {
+    return Stack(fit: StackFit.expand, children: [
+      _contenido(),
+      // Flash de pantalla: todo en blanco durante la captura con poca luz.
+      if (_flashPantalla)
+        const IgnorePointer(child: ColoredBox(color: Colors.white)),
+    ]);
+  }
+
+  Widget _contenido() {
     return SafeArea(child: LayoutBuilder(builder: (context, box) {
       if (_limpio) return _areaCaptura();
       if (!_detallado) {
@@ -1444,9 +1517,11 @@ class _BotonDisparo extends StatelessWidget {
   final double diametro;
   final bool activo;
   final bool procesando;
+  final bool sobreFondoClaro;
   final VoidCallback onPressed;
   const _BotonDisparo(
       {this.diametro = 80,
+      this.sobreFondoClaro = false,
       required this.activo,
       required this.procesando,
       required this.onPressed});
@@ -1468,12 +1543,273 @@ class _BotonDisparo extends StatelessWidget {
                     foregroundColor: AppColors.bosqueProfundo,
                     disabledBackgroundColor: const Color(0xFF405161),
                     disabledForegroundColor: Colors.white60,
-                    shape: const CircleBorder(
-                        side: BorderSide(color: Colors.white60, width: 3))),
+                    shape: CircleBorder(
+                        side: BorderSide(
+                            color: sobreFondoClaro
+                                ? AppColors.bosqueClaro
+                                : Colors.white60,
+                            width: 3))),
                 child: procesando
                     ? const SizedBox.square(
                         dimension: 28,
                         child: CircularProgressIndicator(strokeWidth: 3))
                     : const Icon(Icons.camera_alt_rounded, size: 30),
               ))));
+}
+
+/// Estado del modo manos libres sobre el visor, legible a distancia.
+class _IndicadorManosLibres extends StatelessWidget {
+  const _IndicadorManosLibres({
+    required this.fase,
+    required this.progreso,
+    required this.pocaLuz,
+    required this.iluminando,
+  });
+
+  final FaseManosLibres fase;
+  final double progreso;
+  final bool pocaLuz;
+  final bool iluminando;
+
+  static String texto(FaseManosLibres fase) => switch (fase) {
+        FaseManosLibres.esperando => 'Acercá un residuo a la cámara',
+        FaseManosLibres.movimiento => 'Te veo… mantenelo quieto',
+        FaseManosLibres.estabilizando => 'Quieto… sacando la foto',
+        FaseManosLibres.enfriamiento => '¡Listo! Retirá el residuo',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (fase) {
+      FaseManosLibres.esperando => Colors.white,
+      FaseManosLibres.movimiento => AppColors.ambar,
+      FaseManosLibres.estabilizando => AppColors.limaVivo,
+      FaseManosLibres.enfriamiento => AppColors.limaBrillante,
+    };
+    final icono = switch (fase) {
+      FaseManosLibres.esperando => Icons.pan_tool_alt_outlined,
+      FaseManosLibres.movimiento => Icons.motion_photos_on_outlined,
+      FaseManosLibres.estabilizando => Icons.center_focus_strong,
+      FaseManosLibres.enfriamiento => Icons.check_circle_outline,
+    };
+    return Semantics(
+      liveRegion: true,
+      label: 'Manos libres: ${texto(fase)}',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (pocaLuz)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _Pastilla(
+                color: AppColors.ambar,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(
+                    iluminando ? Icons.light_mode : Icons.dark_mode_outlined,
+                    size: 16,
+                    color: AppColors.ambar,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      iluminando
+                          ? 'Poca luz · iluminando con la pantalla'
+                          : 'Poca luz detectada',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          _Pastilla(
+            color: color,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              SizedBox.square(
+                dimension: 26,
+                child: fase == FaseManosLibres.estabilizando
+                    ? CircularProgressIndicator(
+                        value: progreso.clamp(0.05, 1.0),
+                        strokeWidth: 3.5,
+                        color: color,
+                        backgroundColor: Colors.white24,
+                      )
+                    : Icon(icono, color: color, size: 24),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  texto(fase),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Pastilla extends StatelessWidget {
+  const _Pastilla({required this.color, required this.child});
+
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: color.withValues(alpha: 0.8), width: 1.5),
+        ),
+        child: child,
+      );
+}
+
+/// Hoja para confirmar o corregir el resultado. Con [cuentaRegresiva] se
+/// resuelve sola al terminar (modo manos libres): acepta el resultado o, si
+/// [descartarAlTerminar], lo descarta para reintentar.
+class _HojaConfirmacion extends StatefulWidget {
+  const _HojaConfirmacion({
+    required this.resultado,
+    required this.alternativas,
+    required this.cuentaRegresiva,
+    required this.descartarAlTerminar,
+    required this.onResueltaSola,
+  });
+
+  final ResultadoClasificacion resultado;
+  final List<String> alternativas;
+  final Duration? cuentaRegresiva;
+  final bool descartarAlTerminar;
+  final VoidCallback onResueltaSola;
+
+  @override
+  State<_HojaConfirmacion> createState() => _HojaConfirmacionState();
+}
+
+class _HojaConfirmacionState extends State<_HojaConfirmacion> {
+  Timer? _timer;
+  int _restante = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final cuenta = widget.cuentaRegresiva;
+    if (cuenta == null) return;
+    _restante = cuenta.inSeconds.clamp(1, 30);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return timer.cancel();
+      if (_restante <= 1) {
+        timer.cancel();
+        widget.onResueltaSola();
+        Navigator.pop(
+          context,
+          widget.descartarAlTerminar ? null : widget.resultado.label,
+        );
+        return;
+      }
+      setState(() => _restante--);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resultado = widget.resultado;
+    final automatica = widget.cuentaRegresiva != null;
+    final total = widget.cuentaRegresiva?.inSeconds.clamp(1, 30) ?? 1;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Confirmá el resultado',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'La IA detectó ${CategoriaResiduo.nombreVisible(resultado.label)} '
+                'con ${resultado.confianza.toStringAsFixed(1)}% de confianza.',
+              ),
+              if (automatica) ...[
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  value: _restante / total,
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(8),
+                  color: widget.descartarAlTerminar
+                      ? AppColors.ambar
+                      : AppColors.limaVivo,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.descartarAlTerminar
+                      ? 'Resultado dudoso: se descarta en $_restante s para '
+                          'volver a intentar sin tocar nada.'
+                      : 'Se acepta solo en $_restante s. Tocá solo si querés '
+                          'corregirlo.',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: widget.descartarAlTerminar
+                        ? AppColors.ambar
+                        : AppColors.limaBrillante,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(context, resultado.label),
+                icon: const Icon(Icons.check),
+                label: const Text('Confirmar resultado'),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'O corregí la categoría:',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final label in widget.alternativas)
+                    ActionChip(
+                      label: Text(CategoriaResiduo.nombreVisible(label)),
+                      onPressed: () => Navigator.pop(context, label),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar y no guardar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

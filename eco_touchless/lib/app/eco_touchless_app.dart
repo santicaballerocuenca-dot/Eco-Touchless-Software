@@ -65,7 +65,8 @@ class _InicioAppState extends State<_InicioApp> {
     }
   }
 
-  Future<void> _completarBienvenida() async {
+  Future<void> _completarBienvenida(bool manosLibres) async {
+    await ConfigService.instancia.setDeteccionMovimiento(manosLibres);
     await ConfigService.instancia.setBienvenidaCompletada(true);
     if (!mounted) return;
     setState(() => _bienvenidaCompletada = true);
