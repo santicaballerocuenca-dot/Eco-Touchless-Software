@@ -239,7 +239,7 @@ void handleStatus() {
   JsonDocument doc;
   doc["device"] = "eco_touchless-esp32";
   doc["apiVersion"] = 1;
-  doc["firmware"] = "1.1.0";
+  doc["firmware"] = "1.2.0";
   doc["deviceId"] = deviceId;
   doc["bootId"] = bootId;
   doc["revision"] = revision;
