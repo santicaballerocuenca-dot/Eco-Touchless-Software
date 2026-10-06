@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:eco_touchless/features/esp/data/esp_actuadores_service.dart';
+import 'package:eco_touchless/features/esp/domain/configuracion_servos.dart';
 import 'package:eco_touchless/features/esp/presentation/configuracion_servos_panel.dart';
 
 void main() {
@@ -86,4 +87,70 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
   }
+
+  testWidgets('permite asignar Plastico_Metal_Vidrio a un servo y lo guarda',
+      (tester) async {
+    Map<String, dynamic>? enviado;
+    final data = <String, dynamic>{
+      'apiVersion': 1,
+      'device': 'eco_touchless-esp32',
+      'deviceId': 'board',
+      'bootId': 'boot',
+      'revision': 1,
+      'servos': [
+        for (var i = 0; i < 3; i++)
+          {
+            'id': i,
+            'gpio': [12, 13, 15][i],
+            'enabled': true,
+            'label': ['Plastico', 'Papel_carton', 'Organico'][i],
+            'closedAngle': 0,
+            'openAngle': 90,
+            'holdMs': 3000
+          }
+      ]
+    };
+    final service = EspActuadoresService(
+        destino: () async => Uri.parse('http://192.168.4.1/config'),
+        clave: () async => 'key',
+        cliente: MockClient((r) async {
+          if (r.method == 'GET') return http.Response(jsonEncode(data), 200);
+          enviado = jsonDecode(r.body) as Map<String, dynamic>;
+          final saved = jsonDecode(r.body) as Map<String, dynamic>;
+          saved['revision'] = 2;
+          return http.Response(jsonEncode(saved), 200);
+        }));
+    await service.sincronizar();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(service.dispose);
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: SingleChildScrollView(
+                child: ConfiguracionServosPanel(
+                    visible: false, service: service)))));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    expect(
+        find.text('Plástico + Metal + Vidrio (una sola tapa)'), findsWidgets);
+    await tester
+        .tap(find.text('Plástico + Metal + Vidrio (una sola tapa)').last);
+    await tester.pumpAndSettle();
+    expect(
+        find.textContaining('siguen siendo clases distintas'), findsOneWidget);
+    await tester.ensureVisible(find.text('Guardar en la ESP32'));
+    await tester.tap(find.text('Guardar en la ESP32'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Confirmar'));
+    await tester.pumpAndSettle();
+    expect((enviado!['servos'] as List).first['label'],
+        etiquetaPlasticoMetalVidrio);
+    expect(service.actual!.puedeAccionar('Vidrio'), isTrue);
+    expect(service.actual!.puedeAccionar('Metal'), isTrue);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

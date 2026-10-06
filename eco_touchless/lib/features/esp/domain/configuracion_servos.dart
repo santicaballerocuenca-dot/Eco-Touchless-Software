@@ -1,5 +1,16 @@
 import 'dart:convert';
 
+/// Etiqueta especial de un servo: una sola tapa para varias clases del modelo.
+/// Las clases siguen siendo distintas para la IA; solo comparten el servo.
+const etiquetaPlasticoMetalVidrio = 'Plastico_Metal_Vidrio';
+const clasesPlasticoMetalVidrio = {'Plastico', 'Metal', 'Vidrio'};
+
+/// Clases del modelo que abre un servo configurado con [etiqueta].
+Set<String> clasesDeEtiqueta(String etiqueta) =>
+    etiqueta == etiquetaPlasticoMetalVidrio
+        ? clasesPlasticoMetalVidrio
+        : {etiqueta};
+
 class ConfiguracionServo {
   const ConfiguracionServo(
       {required this.id,
@@ -12,6 +23,10 @@ class ConfiguracionServo {
   final int id, gpio, anguloCerrado, anguloAbierto, cierreMs;
   final String label;
   final bool habilitado;
+
+  /// Si este servo abre la tapa para la clase detectada [clase].
+  bool atiende(String clase) =>
+      habilitado && clase != 'Fondo' && clasesDeEtiqueta(label).contains(clase);
 
   factory ConfiguracionServo.fromJson(Map<String, dynamic> json) =>
       ConfiguracionServo(
@@ -91,19 +106,33 @@ class ConfiguracionServos {
         servos.map((s) => s.id).toSet().length != 3) {
       return 'Configuración de placa incompleta.';
     }
-    final etiquetas = <String>{};
+    final cubiertas = <String>{};
     for (final servo in servos) {
       final error = servo.validar();
       if (error != null) return 'Servo ${servo.id + 1}: $error';
-      if (servo.habilitado && !etiquetas.add(servo.label)) {
-        return 'No asignes la misma etiqueta a dos servos activos.';
+      if (!servo.habilitado) continue;
+      for (final clase in clasesDeEtiqueta(servo.label)) {
+        if (!cubiertas.add(clase)) {
+          return servo.label == etiquetaPlasticoMetalVidrio ||
+                  servos.any((s) =>
+                      s.habilitado && s.label == etiquetaPlasticoMetalVidrio)
+              ? '$clase ya abre otro servo: Plastico_Metal_Vidrio incluye Plastico, Metal y Vidrio.'
+              : 'No asignes la misma etiqueta a dos servos activos.';
+        }
       }
     }
     return null;
   }
 
-  bool puedeAccionar(String label) =>
-      servos.any((s) => s.habilitado && s.label == label && label != 'Fondo');
+  /// Servo que debe abrirse para la clase detectada [label], si hay alguno.
+  ConfiguracionServo? servoPara(String label) {
+    for (final s in servos) {
+      if (s.atiende(label)) return s;
+    }
+    return null;
+  }
+
+  bool puedeAccionar(String label) => servoPara(label) != null;
   Map<String, Object> toJson() => {
         'device': 'eco_touchless-esp32',
         'apiVersion': 1,

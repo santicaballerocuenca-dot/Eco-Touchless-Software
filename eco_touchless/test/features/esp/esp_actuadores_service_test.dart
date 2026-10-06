@@ -45,6 +45,49 @@ void main() {
     expect(config.puedeAccionar('Plastico'), isFalse);
     expect(config.puedeAccionar('Fondo'), isFalse);
   });
+  group('Plastico_Metal_Vidrio', () {
+    test('un servo abre para Plastico, Metal y Vidrio, y para nada más', () {
+      final config = ConfiguracionServos.fromJson(
+          fixture(label: etiquetaPlasticoMetalVidrio));
+      expect(config.validar(), isNull);
+      for (final clase in ['Plastico', 'Metal', 'Vidrio']) {
+        expect(config.puedeAccionar(clase), isTrue, reason: clase);
+        expect(config.servoPara(clase)!.id, 0, reason: clase);
+      }
+      expect(config.puedeAccionar('NoAceptar'), isFalse);
+      expect(config.puedeAccionar('Fondo'), isFalse);
+      expect(config.puedeAccionar('Papel_carton'), isTrue);
+      expect(config.servoPara('Papel_carton')!.id, 1);
+    });
+    test('un servo deshabilitado no abre ninguna de las tres clases', () {
+      final data = fixture(label: etiquetaPlasticoMetalVidrio);
+      (data['servos'] as List)[0]['enabled'] = false;
+      final config = ConfiguracionServos.fromJson(data);
+      for (final clase in ['Plastico', 'Metal', 'Vidrio']) {
+        expect(config.puedeAccionar(clase), isFalse, reason: clase);
+      }
+    });
+    test('rechaza que otro servo activo repita una de las tres clases', () {
+      for (final clase in ['Plastico', 'Metal', 'Vidrio']) {
+        final data = fixture(label: etiquetaPlasticoMetalVidrio);
+        (data['servos'] as List)[1]['label'] = clase;
+        expect(() => ConfiguracionServos.fromJson(data),
+            throwsA(isA<FormatException>()),
+            reason: clase);
+      }
+    });
+    test('permite repetir una de las clases si el otro servo está apagado', () {
+      final data = fixture(label: etiquetaPlasticoMetalVidrio);
+      (data['servos'] as List)[1]['label'] = 'Plastico';
+      (data['servos'] as List)[1]['enabled'] = false;
+      expect(ConfiguracionServos.fromJson(data).validar(), isNull);
+    });
+    test('no se pueden usar dos servos activos con el grupo', () {
+      final data = fixture(label: etiquetaPlasticoMetalVidrio);
+      (data['servos'] as List)[1]['label'] = etiquetaPlasticoMetalVidrio;
+      expect(() => ConfiguracionServos.fromJson(data), throwsFormatException);
+    });
+  });
   test(
       'rechaza 360 grados, timeout inválido, GPIO cambiado y etiquetas duplicadas',
       () {
