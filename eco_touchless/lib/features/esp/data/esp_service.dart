@@ -238,7 +238,9 @@ class EspService {
       final uri = remoto == null
           ? uriBase
           : uriBase.replace(queryParameters: {
-              'label': label,
+              // La placa busca la etiqueta tal como está guardada en el servo;
+              // con Plastico_Metal_Vidrio, Plastico/Metal/Vidrio envían ese grupo.
+              'label': remoto.servoPara(label)?.label ?? label,
               'deviceId': remoto.deviceId,
               'bootId': remoto.bootId,
               'revision': '${remoto.revision}',

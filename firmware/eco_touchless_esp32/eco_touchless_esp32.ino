@@ -95,6 +95,24 @@ bool validLabel(const char* label) {
   }
   return true;
 }
+// Etiqueta especial: un servo con "Plastico_Metal_Vidrio" abre para las tres clases,
+// que siguen siendo distintas para la IA pero comparten una sola tapa.
+const char* const GROUP_LABEL = "Plastico_Metal_Vidrio";
+bool inGroup(const char* label) {
+  return strcmp(label, "Plastico") == 0 || strcmp(label, "Metal") == 0 || strcmp(label, "Vidrio") == 0;
+}
+// 'configured' es la etiqueta guardada en un servo; 'incoming' la clase detectada.
+bool labelMatches(const char* configured, const char* incoming) {
+  if (strcmp(configured, incoming) == 0) return true;
+  return strcmp(configured, GROUP_LABEL) == 0 && inGroup(incoming);
+}
+// Dos servos activos no pueden responder a una misma clase.
+bool labelsOverlap(const char* a, const char* b) {
+  if (strcmp(a, b) == 0) return true;
+  if (strcmp(a, GROUP_LABEL) == 0) return inGroup(b);
+  if (strcmp(b, GROUP_LABEL) == 0) return inGroup(a);
+  return false;
+}
 bool decodeServos(JsonVariantConst value, ServoConfig* output, String& error) {
   if (!value.is<JsonArrayConst>() || value.size() != NUM_SERVOS) { error = "Exactly three servos required"; return false; }
   bool seen[NUM_SERVOS] = {false, false, false};
@@ -129,8 +147,8 @@ bool decodeServos(JsonVariantConst value, ServoConfig* output, String& error) {
   }
   for (size_t a = 0; a < NUM_SERVOS; a++) {
     for (size_t b = a + 1; b < NUM_SERVOS; b++) {
-      if (output[a].enabled && output[b].enabled && strcmp(output[a].label, output[b].label) == 0) {
-        error = "Enabled servos must have different labels"; return false;
+      if (output[a].enabled && output[b].enabled && labelsOverlap(output[a].label, output[b].label)) {
+        error = "Enabled servos must have different labels (Plastico_Metal_Vidrio includes Plastico, Metal and Vidrio)"; return false;
       }
     }
   }
@@ -296,7 +314,7 @@ void handleLabel(const String& label, bool modern) {
   if (!storageReady || !hardwareReady || hardwareFault) { unlock(); sendError(503, "Servos not ready; consult status"); return; }
   if (activeServo >= 0 || static_cast<uint32_t>(millis() - lastClosed) < COOLDOWN_MS) { unlock(); sendError(409, "Servo cycle in progress"); return; }
   int target = -1;
-  for (size_t i = 0; i < NUM_SERVOS; i++) if (settings[i].enabled && label == settings[i].label) target = i;
+  for (size_t i = 0; i < NUM_SERVOS; i++) if (settings[i].enabled && labelMatches(settings[i].label, label.c_str())) target = i;
   if (target < 0) { unlock(); sendError(422, "No enabled servo assigned to label"); return; }
   if (!positionServo(target, settings[target].openAngle)) { unlock(); sendError(503, "PWM allocation failed"); return; }
   activeServo = target;

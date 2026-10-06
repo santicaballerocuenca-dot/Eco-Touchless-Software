@@ -38,12 +38,12 @@ Las contraseñas iniciales son para desarrollo. Cambiar `AP_PASSWORD` y `API_KEY
 | Ajuste | Significado |
 |---|---|
 | Activo | Permite que una clasificación abra este servo. Desactivarlo no elimina su posición de cierre. |
-| Etiqueta | Texto exacto del modelo. La app reúne etiquetas de los modelos instalados; incluye Metal, Vidrio o NoAceptar si querés asignarlos. Fondo está bloqueado. |
+| Etiqueta | Texto exacto del modelo. La app reúne etiquetas de los modelos instalados; incluye Metal, Vidrio o NoAceptar si querés asignarlos. Fondo está bloqueado. **Plastico_Metal_Vidrio** (primera opción de la lista) hace que ese servo abra para Plastico, Metal y Vidrio: siguen siendo tres clases distintas para la IA, pero comparten una sola tapa. |
 | Cerrado | Posición absoluta entre 0 y 180°. |
 | Abierto | Otra posición absoluta entre 0 y 180°. |
 | Cerrar después de | Entre 0,5 y 60 segundos, desde la orden de apertura hasta la orden de cierre. |
 
-Ejemplos: servo normal **cerrado 0°, abierto 90°**; invertido **cerrado 180°, abierto 90°** o **cerrado 90°, abierto 0°**, según el montaje. No asignar una misma etiqueta a dos servos activos.
+Ejemplos: servo normal **cerrado 0°, abierto 90°**; invertido **cerrado 180°, abierto 90°** o **cerrado 90°, abierto 0°**, según el montaje. No asignar una misma etiqueta a dos servos activos; tampoco `Plastico`, `Metal` o `Vidrio` a otro servo mientras uno activo use `Plastico_Metal_Vidrio`, porque la placa rechaza el guardado.
 
 **Guardar en la ESP32** pide confirmación: guarda los tres ajustes en memoria no volátil y **mueve secuencialmente los tres servos a las posiciones cerradas**, incluso los desactivados. Esperar aproximadamente 3 segundos antes de clasificar. También se posicionan secuencialmente al arrancar. Los ajustes sobreviven a cortes de alimentación mediante [Preferences/NVS](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html); no se escribe en flash en cada detección.
 

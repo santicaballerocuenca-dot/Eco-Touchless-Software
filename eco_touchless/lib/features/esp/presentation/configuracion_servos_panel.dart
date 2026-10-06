@@ -212,6 +212,12 @@ class _ConfiguracionServosPanelState extends State<ConfiguracionServosPanel> {
     super.dispose();
   }
 
+  static String _nombreEtiqueta(String label) => label.isEmpty
+      ? 'Sin asignar'
+      : label == etiquetaPlasticoMetalVidrio
+          ? 'Plástico + Metal + Vidrio (una sola tapa)'
+          : label;
+
   String? _angulo(String? value) {
     final n = int.tryParse(value ?? '');
     return n == null || n < 0 || n > 180 ? 'Entero de 0 a 180' : null;
@@ -277,17 +283,27 @@ class _ConfiguracionServosPanelState extends State<ConfiguracionServosPanel> {
                                           '${_base!.bootId}:${_base!.revision}:${e.original.id}'),
                                       initialValue: e.label,
                                       isExpanded: true,
-                                      decoration: const InputDecoration(
+                                      decoration: InputDecoration(
                                           labelText:
-                                              'Etiqueta que abre esta tapa'),
-                                      items: ({..._labels, e.label}.toList()
-                                            ..sort())
+                                              'Etiqueta que abre esta tapa',
+                                          helperText: e.label ==
+                                                  etiquetaPlasticoMetalVidrio
+                                              ? 'Plástico, Metal y Vidrio siguen siendo clases distintas, pero abren este mismo servo.'
+                                              : null,
+                                          helperMaxLines: 2),
+                                      items: [
+                                        etiquetaPlasticoMetalVidrio,
+                                        ...({..._labels, e.label}
+                                            .where((l) =>
+                                                l !=
+                                                etiquetaPlasticoMetalVidrio)
+                                            .toList()
+                                          ..sort())
+                                      ]
                                           .map((label) => DropdownMenuItem(
                                               value: label,
                                               child: Text(
-                                                  label.isEmpty
-                                                      ? 'Sin asignar'
-                                                      : label,
+                                                  _nombreEtiqueta(label),
                                                   overflow:
                                                       TextOverflow.ellipsis)))
                                           .toList(),
